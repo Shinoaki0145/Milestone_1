@@ -39,9 +39,6 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
                 failed_consecutive = 0
             else:
                 failed_consecutive += 1
-                if failed_consecutive >= max_consecutive_failures:
-                    print(f"Stopping early — {max_consecutive_failures} consecutive failures.\n")
-                    break
             current_id += 1
         print(f"Finished {start_month}.\n")
     else:
@@ -108,3 +105,4 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
 #         save_dir="./sources"
 
 #     )
+
