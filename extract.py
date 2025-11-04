@@ -2,7 +2,7 @@ import os
 import tarfile
 import glob
 
-source_folder = "test"
+source_folder = "sources"
 destination_folder = "extracted_folder"
 
 os.makedirs(destination_folder, exist_ok=True)
@@ -72,4 +72,5 @@ for root, dirs, files in os.walk(destination_folder):
 
 print(f"\n{'='*50}")
 print(f"Hoàn thành! Đã xóa {deleted_count} file hình ảnh")
+
 print(f"{'='*50}")
