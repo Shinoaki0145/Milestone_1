@@ -84,7 +84,6 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
         current_id = start_id
         while current_id <= end_id:
             arxiv_id = f"{start_prefix}.{current_id:05d}"
-            #if get_source(arxiv_id, save_dir):
             if get_source_all_versions(arxiv_id, save_dir):
                 downloaded += 1
                 failed_consecutive = 0
@@ -97,7 +96,6 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
         current_id = start_id
         while failed_consecutive < max_consecutive_failures:
             arxiv_id = f"{start_prefix}.{current_id:05d}"
-            #if get_source(arxiv_id, save_dir):
             if get_source_all_versions(arxiv_id, save_dir):
                 downloaded += 1
                 failed_consecutive = 0
@@ -113,7 +111,6 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
         current_id = 1
         while current_id <= end_id:
             arxiv_id = f"{end_prefix}.{current_id:05d}"
-            #if get_source(arxiv_id, save_dir):
             if get_source_all_versions(arxiv_id, save_dir):
                 downloaded += 1
                 failed_consecutive = 0
@@ -127,6 +124,9 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
         print(f"Download complete!")
         print(f"Successfully downloaded: {downloaded} papers")
         print(f"Files saved to: {os.path.abspath(save_dir)}")
+        
+        
+        
 # # Đạt
 # if __name__ == "__main__":
 #     download_arxiv_range(
@@ -157,5 +157,3 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
 #         save_dir="./sources"
 
 #     )
-
-
