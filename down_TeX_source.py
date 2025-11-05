@@ -8,7 +8,6 @@ def get_source(arxiv_id, save_dir="./sources"):
         paper = next(arxiv.Client().results(arxiv.Search(id_list=[arxiv_id])))
         
         paper.download_source(dirpath=save_dir, filename=f"{arxiv_id}.tar.gz")
-        
         print(f"Successfully downloaded: {arxiv_id}")
         return True
     except Exception as e:
@@ -62,6 +61,20 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
     print(f"Successfully downloaded: {downloaded} papers")
     print(f"Files saved to: {os.path.abspath(save_dir)}")
 
+def check_file(dir, start_id, end_id):
+    existing_files = set(os.listdir(dir))
+    list_files = []
+    for file in existing_files:
+        if file.endswith(".tar.gz"):
+            id_part = file.split(".")[1]
+            id = int(id_part)
+            if not (start_id <= id <= end_id):
+                os.remove(os.path.join(dir, file))
+            else:
+                list_files.append(int(id_part))
+    list_files.sort()
+    return list_files
+    
 # # Đạt
 # if __name__ == "__main__":
 #     download_arxiv_range(
@@ -83,11 +96,21 @@ def download_arxiv_range(start_month, start_id, end_month, end_id, save_dir="./s
 #     )
     
 # # Việt 
-# if __name__ == "__main__":
-#     download_arxiv_range(
-#         start_month="2023-05",
-#         start_id=9595,
-#         end_month="2023-05", 
-#         end_id=14596,
-#         save_dir="./sources"
-#     )
+if __name__ == "__main__":
+    # start_id=9595
+    # end_id=14596
+
+    download_arxiv_range(
+        start_month="2023-05",
+        start_id=9595,
+        end_month="2023-05", 
+        end_id=14596,
+        save_dir="./sources"
+    )
+    # list_files = check_file(dir="./sources",start_id=start_id, end_id=end_id)
+    # for i in range(start_id, end_id + 1):
+    #     if i not in list_files:
+    #         arxiv_id = f"2305.{i:05d}"
+    #         # print(f"Downloading missing file: {arxiv_id}")
+    #         # get_source(arxiv_id, "./sources")
+    #         print(arxiv_id)
