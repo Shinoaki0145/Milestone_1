@@ -3,7 +3,7 @@ import tarfile
 import glob
 
 source_folder = "sources"
-destination_folder = "extracted_folder"
+destination_folder = "extracted_and_cleaned_figures"
 
 os.makedirs(destination_folder, exist_ok=True)
 
@@ -60,7 +60,7 @@ for root, dirs, files in os.walk(destination_folder):
                 print(f"✗ Không thể xóa {file_path}: {str(e)}")
     
     for dir_name in dirs[:]:
-        if dir_name.lower() in ['figures', 'figs', 'images', 'figure']:
+        if dir_name.lower() in ['figures', 'figure', 'figs', 'fig', 'images', 'image', 'imgs', 'img']:
             dir_path = os.path.join(root, dir_name)
             try:
                 import shutil
@@ -72,5 +72,4 @@ for root, dirs, files in os.walk(destination_folder):
 
 print(f"\n{'='*50}")
 print(f"Hoàn thành! Đã xóa {deleted_count} file hình ảnh")
-
 print(f"{'='*50}")
