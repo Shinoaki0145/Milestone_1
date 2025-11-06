@@ -161,17 +161,17 @@ def check_file(dir, start_id, end_id):
     
 # # Việt 
 if __name__ == "__main__":
-    # start_id=9595
-    # end_id=14596
+    start_id=9595
+    end_id=14596
 
-    download_arxiv_range(
-        start_month="2023-05",
-        start_id=9595,
-        end_month="2023-05", 
-        end_id=14596,
-        save_dir="./sources"
-    )
-    # list_files = check_file(dir="./sources",start_id=start_id, end_id=end_id)
+    # download_arxiv_range(
+    #     start_month="2023-05",
+    #     start_id=9595,
+    #     end_month="2023-05", 
+    #     end_id=14596,
+    #     save_dir="./sources"
+    # )
+    list_files = check_file(dir="./sources",start_id=start_id, end_id=end_id)
     # for i in range(start_id, end_id + 1):
     #     if i not in list_files:
     #         arxiv_id = f"2305.{i:05d}"
