@@ -1,0 +1,220 @@
+{
+    "2210.05171": {
+        "title": "Deep Fourier Up-Sampling",
+        "authors": [
+            "Man Zhou",
+            "Hu Yu",
+            "Jie Huang",
+            "Feng Zhao",
+            "Jinwei Gu",
+            "Chen Change Loy",
+            "Deyu Meng",
+            "Chongyi Li"
+        ],
+        "submission_date": "2022-10-11T06:17:31+00:00",
+        "revised_dates": [
+            "2022-10-11T06:17:31+00:00"
+        ]
+    },
+    "2205.10102": {
+        "title": "Degradation-Aware Unfolding Half-Shuffle Transformer for Spectral Compressive Imaging",
+        "authors": [
+            "Yuanhao Cai",
+            "Jing Lin",
+            "Haoqian Wang",
+            "Xin Yuan",
+            "Henghui Ding",
+            "Yulun Zhang",
+            "Radu Timofte",
+            "Luc Van Gool"
+        ],
+        "submission_date": "2022-05-20T11:37:44+00:00",
+        "revised_dates": [
+            "2022-10-17T02:40:44+00:00"
+        ]
+    },
+    "2204.13348": {
+        "title": "Deep Generalized Unfolding Networks for Image Restoration",
+        "authors": [
+            "Chong Mou",
+            "Qian Wang",
+            "Jian Zhang"
+        ],
+        "submission_date": "2022-04-28T08:39:39+00:00",
+        "revised_dates": [
+            "2022-04-28T08:39:39+00:00"
+        ]
+    },
+    "2203.02916": {
+        "title": "PanFormer: a Transformer Based Model for Pan-sharpening",
+        "authors": [
+            "Huanyu Zhou",
+            "Qingjie Liu",
+            "Yunhong Wang"
+        ],
+        "submission_date": "2022-03-06T09:22:20+00:00",
+        "revised_dates": [
+            "2022-03-22T07:01:11+00:00"
+        ]
+    },
+    "2108.10257": {
+        "title": "SwinIR: Image Restoration Using Swin Transformer",
+        "authors": [
+            "Jingyun Liang",
+            "Jiezhang Cao",
+            "Guolei Sun",
+            "Kai Zhang",
+            "Luc Van Gool",
+            "Radu Timofte"
+        ],
+        "submission_date": "2021-08-23T15:55:32+00:00",
+        "revised_dates": [
+            "2021-08-23T15:55:32+00:00"
+        ]
+    },
+    "2103.04584": {
+        "title": "Deep Gradient Projection Networks for Pan-sharpening",
+        "authors": [
+            "Shuang Xu",
+            "Jiangshe Zhang",
+            "Zixiang Zhao",
+            "Kai Sun",
+            "Junmin Liu",
+            "Chunxia Zhang"
+        ],
+        "submission_date": "2021-03-08T07:51:58+00:00",
+        "revised_dates": [
+            "2021-03-08T07:51:58+00:00"
+        ]
+    },
+    "2010.11929": {
+        "title": "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale",
+        "authors": [
+            "Alexey Dosovitskiy",
+            "Lucas Beyer",
+            "Alexander Kolesnikov",
+            "Dirk Weissenborn",
+            "Xiaohua Zhai",
+            "Thomas Unterthiner",
+            "Mostafa Dehghani",
+            "Matthias Minderer",
+            "Georg Heigold",
+            "Sylvain Gelly",
+            "Jakob Uszkoreit",
+            "Neil Houlsby"
+        ],
+        "submission_date": "2020-10-22T17:55:59+00:00",
+        "revised_dates": [
+            "2021-06-03T13:08:56+00:00"
+        ]
+    },
+    "2003.10428": {
+        "title": "Deep Unfolding Network for Image Super-Resolution",
+        "authors": [
+            "Kai Zhang",
+            "Luc Van Gool",
+            "Radu Timofte"
+        ],
+        "submission_date": "2020-03-23T17:55:42+00:00",
+        "revised_dates": [
+            "2020-03-23T17:55:42+00:00"
+        ]
+    },
+    "1901.03281": {
+        "title": "Multispectral and Hyperspectral Image Fusion by MS/HS Fusion Net",
+        "authors": [
+            "Qi Xie",
+            "Minghao Zhou",
+            "Qian Zhao",
+            "Deyu Meng",
+            "Wangmeng Zuo",
+            "Zongben Xu"
+        ],
+        "submission_date": "2019-01-10T17:16:59+00:00",
+        "revised_dates": [
+            "2019-01-10T17:16:59+00:00"
+        ]
+    },
+    "1711.07971": {
+        "title": "Non-local Neural Networks",
+        "authors": [
+            "Xiaolong Wang",
+            "Ross Girshick",
+            "Abhinav Gupta",
+            "Kaiming He"
+        ],
+        "submission_date": "2017-11-21T18:51:16+00:00",
+        "revised_dates": [
+            "2018-04-13T06:40:44+00:00"
+        ]
+    },
+    "1706.03762": {
+        "title": "Attention Is All You Need",
+        "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer",
+            "Niki Parmar",
+            "Jakob Uszkoreit",
+            "Llion Jones",
+            "Aidan N. Gomez",
+            "Lukasz Kaiser",
+            "Illia Polosukhin"
+        ],
+        "submission_date": "2017-06-12T17:57:34+00:00",
+        "revised_dates": [
+            "2023-08-02T00:41:18+00:00"
+        ]
+    },
+    "1610.02357": {
+        "title": "Xception: Deep Learning with Depthwise Separable Convolutions",
+        "authors": [
+            "Fran\u00e7ois Chollet"
+        ],
+        "submission_date": "2016-10-07T17:51:51+00:00",
+        "revised_dates": [
+            "2017-04-04T18:40:27+00:00"
+        ]
+    },
+    "1605.01710": {
+        "title": "Plug-and-Play ADMM for Image Restoration: Fixed Point Convergence and Applications",
+        "authors": [
+            "Stanley H. Chan",
+            "Xiran Wang",
+            "Omar A. Elgendy"
+        ],
+        "submission_date": "2016-05-05T19:49:19+00:00",
+        "revised_dates": [
+            "2016-11-11T18:12:48+00:00"
+        ]
+    },
+    "1512.03385": {
+        "title": "Deep Residual Learning for Image Recognition",
+        "authors": [
+            "Kaiming He",
+            "Xiangyu Zhang",
+            "Shaoqing Ren",
+            "Jian Sun"
+        ],
+        "submission_date": "2015-12-10T19:51:55+00:00",
+        "revised_dates": [
+            "2015-12-10T19:51:55+00:00"
+        ]
+    },
+    "2103.14030": {
+        "title": "Swin Transformer: Hierarchical Vision Transformer using Shifted Windows",
+        "authors": [
+            "Ze Liu",
+            "Yutong Lin",
+            "Yue Cao",
+            "Han Hu",
+            "Yixuan Wei",
+            "Zheng Zhang",
+            "Stephen Lin",
+            "Baining Guo"
+        ],
+        "submission_date": "2021-03-25T17:59:31+00:00",
+        "revised_dates": [
+            "2021-08-17T16:41:34+00:00"
+        ]
+    }
+}
