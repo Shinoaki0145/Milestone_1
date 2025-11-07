@@ -5,7 +5,7 @@ import requests
 import json    
 import arxiv     
 from datetime import datetime       
-from dateutil.relativedelta import relativedelta 
+# from dateutil.relativedelta import relativedelta 
 
 def get_references_json(arxiv_id, output_json_path): 
     """
@@ -33,7 +33,7 @@ def get_references_json(arxiv_id, output_json_path):
             retries = 3
             while retries > 0:
                 retries -= 1
-                print(f"    LỖI 429: Bị Rate Limit. Chờ 60 giây (Còn {retries} lần thử)...")
+                print(f"    LỖI 429: Bị Rate Limit. Chờ 20 giây (Còn {retries} lần thử)...")
                 time.sleep(20)
                 # Thử gọi lại
                 response = requests.get(url, params=params)
@@ -73,6 +73,7 @@ def get_references_json(arxiv_id, output_json_path):
                         "submission_date": paper.published.isoformat(),
                         "revised_dates": [paper.updated.isoformat()]
                     }
+                    print(ref_metadata)
                     output_references_dict[base_ref_id] = ref_metadata
                     time.sleep(0.5) 
                 except Exception:
@@ -123,16 +124,16 @@ def run_semantic_for_range(start_month, start_id, end_month, end_id,
             print(f"\nChecking Paper: {arxiv_id}")
             
             # 1. Kiểm tra xem file TeX (v1) có tồn tại trong './sources' không
-            v1_file_path = os.path.join(source_dir, f"{arxiv_id}v1.tar.gz")
+            # v1_file_path = os.path.join(source_dir, f"{arxiv_id}v1.tar.gz")
             
-            if os.path.isfile(v1_file_path):
-                json_filename = f"{arxiv_id.replace('.', '-')}.json"
-                output_json_path = os.path.join(references_dir, json_filename)
-                
-                if get_references_json(arxiv_id, output_json_path):
-                    processed_count += 1
-            else:
-                print(f"  SKIPPING: File '{v1_file_path}' not found in {source_dir}.")
+            # if os.path.isfile(v1_file_path):
+            json_filename = f"{arxiv_id.replace('.', '-')}.json"
+            output_json_path = os.path.join(references_dir, json_filename)
+            
+            if get_references_json(arxiv_id, output_json_path):
+                processed_count += 1
+            # else:
+            #     print(f"  SKIPPING: File '{v1_file_path}' not found in {source_dir}.")
             
             current_id += 1
         print(f"Finished {start_month}.\n")
@@ -148,18 +149,18 @@ def run_semantic_for_range(start_month, start_id, end_month, end_id,
             arxiv_id = f"{start_prefix}.{current_id:05d}"
             print(f"\nChecking Paper: {arxiv_id}")
             
-            v1_file_path = os.path.join(source_dir, f"{arxiv_id}v1.tar.gz")
+            # v1_file_path = os.path.join(source_dir, f"{arxiv_id}v1.tar.gz")
             
-            if os.path.isfile(v1_file_path):
-                json_filename = f"{arxiv_id.replace('.', '-')}.json"
-                output_json_path = os.path.join(references_dir, json_filename)
-                
-                if get_references_json(arxiv_id, output_json_path):
-                    processed_count += 1
-                failed_consecutive = 0
-            else:
-                print(f"  File v1 not found in {source_dir}.")
-                failed_consecutive += 1
+            # if os.path.isfile(v1_file_path):
+            json_filename = f"{arxiv_id.replace('.', '-')}.json"
+            output_json_path = os.path.join(references_dir, json_filename)
+            
+            if get_references_json(arxiv_id, output_json_path):
+                processed_count += 1
+            failed_consecutive = 0
+            # else:
+            #     print(f"  File v1 not found in {source_dir}.")
+            #     failed_consecutive += 1
             
             current_id += 1
         
