@@ -46,7 +46,7 @@ def get_source_all_versions(arxiv_id, save_dir="./sources"):
             paper_version.download_source(dirpath=save_dir, filename=filename)
 
             versions_downloaded += 1
-            time.sleep(0.5) 
+            # time.sleep(0.5) 
 
         except StopIteration:
             print(f"  ERROR: Found v{latest_version} but could not find {versioned_id}?")
@@ -161,17 +161,17 @@ def check_file(dir, start_id, end_id):
     
 # # Việt 
 if __name__ == "__main__":
-    start_id=9595
-    end_id=14596
+    # start_id=9595
+    # end_id=14596
 
-    # download_arxiv_range(
-    #     start_month="2023-05",
-    #     start_id=9595,
-    #     end_month="2023-05", 
-    #     end_id=14596,
-    #     save_dir="./sources"
-    # )
-    list_files = check_file(dir="./sources",start_id=start_id, end_id=end_id)
+    download_arxiv_range(
+        start_month="2023-05",
+        start_id=9595,
+        end_month="2023-05", 
+        end_id=14596,
+        save_dir="./sources1"
+    )
+    # list_files = check_file(dir="./sources",start_id=start_id, end_id=end_id)
     # for i in range(start_id, end_id + 1):
     #     if i not in list_files:
     #         arxiv_id = f"2305.{i:05d}"
