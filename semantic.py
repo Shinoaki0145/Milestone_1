@@ -80,7 +80,7 @@ def get_references_json(arxiv_id, output_json_path):
 
         # SỬA LẠI: Lưu vào 'output_json_path'
         with open(output_json_path, "w", encoding="utf-8") as f:
-            json.dump(output_references_dict, f, indent=4)
+            json.dump(output_references_dict, f, indent=4, ensure_ascii=False)
             
         print(f"    Đã lưu file '{os.path.basename(output_json_path)}' với {len(output_references_dict)} arXiv ID.")
         return True

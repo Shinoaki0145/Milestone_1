@@ -71,7 +71,7 @@ def get_metadata_all_versions(arxiv_id, client):
             # Lấy metadata từ phiên bản mới nhất (an toàn nhất)
             if v == latest_version:
                  final_title = paper_version.title
-                 final_authors = [author.name for author in paper_version.authors].utf8()
+                 final_authors = [author.name for author in paper_version.authors]
 
             time.sleep(0.5) # Giảm tải cho API
 
@@ -139,7 +139,7 @@ def process_metadata_range(start_month, start_id, end_month, end_id, save_dir=".
                 
                 try:
                     with open(output_json_path, 'w', encoding='utf-8') as f:
-                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+                        json.dump(metadata, f, indent=4, ensure_ascii=False)
                     print(f"  -> SUCCESS: Đã lưu {json_filename}")
                     processed_count += 1
                     failed_consecutive = 0
