@@ -1,0 +1,148 @@
+{
+    "2305.02524": {
+        "title": "A fresh look at the vibrational and thermodynamic properties of liquids within the soft potential model",
+        "authors": [
+            "Haichen Xu",
+            "Matteo Baggioli",
+            "Tom Keyes"
+        ],
+        "submission_date": "2023-05-04T03:24:41+00:00",
+        "revised_dates": [
+            "2023-10-19T03:13:51+00:00"
+        ]
+    },
+    "2210.06218": {
+        "title": "Microscopic view of heat capacity of matter: solid, liquid, and gas",
+        "authors": [
+            "Jaeyun Moon",
+            "Simon Th\u00e9baud",
+            "Lucas Lindsay",
+            "Takeshi Egami"
+        ],
+        "submission_date": "2022-10-12T14:04:28+00:00",
+        "revised_dates": [
+            "2022-10-13T15:59:42+00:00"
+        ]
+    },
+    "2201.11914": {
+        "title": "Experimental Confirmation of the Universal Law for the Vibrational Density of States of Liquids",
+        "authors": [
+            "Caleb Stamper",
+            "David Cortie",
+            "Zengji Yue",
+            "Xiaolin Wang",
+            "Dehong Yu"
+        ],
+        "submission_date": "2022-01-28T03:16:52+00:00",
+        "revised_dates": [
+            "2022-01-28T03:16:52+00:00"
+        ]
+    },
+    "2111.11681": {
+        "title": "Instantaneous normal modes of glass-forming liquids during the athermal relaxation process of the steepest descent algorithm",
+        "authors": [
+            "Masanari Shimada",
+            "Kumpei Shiraishi",
+            "Hideyuki Mizuno",
+            "Atsushi Ikeda"
+        ],
+        "submission_date": "2021-11-23T06:56:11+00:00",
+        "revised_dates": [
+            "2024-01-26T15:10:59+00:00"
+        ]
+    },
+    "2101.07585": {
+        "title": "Explaining the specific heat of liquids based on instantaneous normal modes",
+        "authors": [
+            "Matteo Baggioli",
+            "Alessio Zaccone"
+        ],
+        "submission_date": "2021-01-19T12:11:41+00:00",
+        "revised_dates": [
+            "2021-03-23T13:09:29+00:00"
+        ]
+    },
+    "2101.01380": {
+        "title": "Universal law for the vibrational density of states of liquids",
+        "authors": [
+            "Alessio Zaccone",
+            "Matteo Baggioli"
+        ],
+        "submission_date": "2021-01-05T07:09:52+00:00",
+        "revised_dates": [
+            "2021-01-05T07:09:52+00:00"
+        ]
+    },
+    "2010.02851": {
+        "title": "Topological phases of amorphous matter",
+        "authors": [
+            "Adolfo G. Grushin"
+        ],
+        "submission_date": "2020-10-06T16:14:30+00:00",
+        "revised_dates": [
+            "2021-01-19T08:37:27+00:00"
+        ]
+    },
+    "1904.01419": {
+        "title": "Gapped momentum states",
+        "authors": [
+            "Matteo Baggioli",
+            "Vadim Brazhkin",
+            "Kostya Trachenko",
+            "Mikhail Vasin"
+        ],
+        "submission_date": "2019-03-25T15:44:18+00:00",
+        "revised_dates": [
+            "2020-04-01T21:28:00+00:00"
+        ]
+    },
+    "1512.06592": {
+        "title": "Collective modes and thermodynamics of the liquid state",
+        "authors": [
+            "K. Trachenko",
+            "V. V. Brazhkin"
+        ],
+        "submission_date": "2015-12-21T12:02:57+00:00",
+        "revised_dates": [
+            "2015-12-21T12:02:57+00:00"
+        ]
+    },
+    "1202.0459": {
+        "title": "The phonon theory of liquid thermodynamics",
+        "authors": [
+            "Dima Bolmatov",
+            "Vadim Brazhkin",
+            "Kostya Trachenko"
+        ],
+        "submission_date": "2012-02-02T15:22:10+00:00",
+        "revised_dates": [
+            "2012-04-12T19:55:41+00:00"
+        ]
+    },
+    "cond-mat/0007207": {
+        "title": "Role of the unstable directions in the equilibrium and aging dynamics of supercooled liquids",
+        "authors": [
+            "Claudio Donati",
+            "Francesco Sciortino",
+            "Piero Tartaglia"
+        ],
+        "submission_date": "2000-07-12T15:56:47+00:00",
+        "revised_dates": [
+            "2000-07-12T15:56:47+00:00"
+        ]
+    },
+    "cond-mat/9908412": {
+        "title": "Instantaneous Normal Mode Analysis of Supercooled Water",
+        "authors": [
+            "Emilia La Nave",
+            "Antonio Scala",
+            "Francis W. Starr",
+            "Francesco Sciortino",
+            "H. Eugene Stanley"
+        ],
+        "submission_date": "1999-08-27T15:51:26+00:00",
+        "revised_dates": [
+            "1999-08-27T15:51:26+00:00"
+        ]
+    }
+}
