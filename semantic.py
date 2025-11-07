@@ -73,7 +73,6 @@ def get_references_json(arxiv_id, output_json_path):
                         "submission_date": paper.published.isoformat(),
                         "revised_dates": [paper.updated.isoformat()]
                     }
-                    print(ref_metadata)
                     output_references_dict[base_ref_id] = ref_metadata
                     time.sleep(0.5) 
                 except Exception:
