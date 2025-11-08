@@ -55,7 +55,7 @@ def get_references_json(arxiv_id, output_json_path):
                     paper = next(arxiv_client.results(search))
                     
                     ref_metadata = {
-                        "title": paper.title,
+                        "paper_title": paper.title,
                         "authors": [a.name for a in paper.authors], 
                         "submission_date": paper.published.isoformat(),
                         "semantic_scholar_id": ref.get("paperId")
@@ -182,10 +182,10 @@ def run_semantic_for_range(start_month, start_id, end_month, end_id,
 # Đạt
 if __name__ == "__main__":
     run_semantic_for_range(
-        start_month="2023-04",
-        start_id=15000,
+        start_month="2023-05",
+        start_id=1,
         end_month="2023-05", 
-        end_id=10,
+        end_id=3,
         source_dir="./sources",       
         references_dir="./references" 
     )

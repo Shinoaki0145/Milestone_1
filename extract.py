@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+import gzip
 
 # Thread-safe locks and counters
 stats_lock = Lock()
@@ -13,126 +14,120 @@ stats = {
     "extracted": 0,
     "failed": 0,
     "deleted_files": 0,
-    "deleted_folders": 0,
-    "copied_pdfs": 0
+    "pdfs": 0
 }
 
 source_folder = "sources"
 destination_folder = "extracted_and_cleaned_figures"
 
+
 def detect_and_fix_filetype(tar_path):
     """
-    Check filetype (tar.gz, PDF, ...)
-    If PDF => Convert file extension
-    If tar, tar.gz, I call them is tar => Do nothing
+    Check filetype (tar.gz, PDF, GZ, ...)
+    Returns: (path, filetype, original_name_if_gz)
     """
-    result = subprocess.run(["file", tar_path], capture_output=True, text=True)
-    output = result.stdout.strip()
+    try:
+        result = subprocess.run(["file", tar_path], capture_output=True, text=True, errors='ignore') # errors
+        output = result.stdout.strip()
+    except FileNotFoundError:
+        print("X 'file' command not found. Please install 'file' utility.")
+        return tar_path, "unknown", None
+    except Exception as e:
+        print(f"X Error running 'file' command on {tar_path}: {e}")
+        return tar_path, "unknown", None
 
     if "PDF document" in output:
-        new_path = re.sub(r'\.tar(\.gz)?$', '.pdf', tar_path)
-        # new_path = re.sub(r'\.tar\.gz$', '.pdf', tar_path)
-
-        if not new_path.endswith(".pdf"):
-            new_path += ".pdf"
-
-        # Remane root folder
-        os.rename(tar_path, new_path)
-        pdf_name = os.path.basename(new_path)
-
-        # Copy to folder dest
-        # os.makedirs(destination_folder, exist_ok=True)
-        # shutil.copy(new_path, os.path.join(destination_folder, pdf_name))
-
         with stats_lock:
-            stats["copied_pdfs"] += 1
+            stats["pdfs"] += 1
+        print(f"{os.path.basename(tar_path)} => Detected as PDF")
+        return tar_path, "pdf", None
 
-        print(f"{os.path.basename(tar_path)} => Detected as PDF (converted)")
-        return new_path, "pdf"
+    elif "gzip compressed data" in output:
+        match = re.search(r', was "([^"]+)"', output)
+        if match:
+            original_name = os.path.basename(match.group(1))
+            return tar_path, "gz", original_name
+        else:
+            return tar_path, "tar.gz", None
 
-    elif "gzip compressed data" in output or "tar archive" in output:
-        return tar_path, "tar.gz"
+    elif "tar archive" in output:
+        return tar_path, "tar.gz", None
 
     else:
         print(f"Unknown format: {os.path.basename(tar_path)} => {output}")
-        return tar_path, "unknown"
+        return tar_path, "unknown", None
 
 
 def extract_and_clean_single_tar(tar_path, destination_folder):
     file_name = os.path.basename(tar_path)
-    fixed_path, filetype = detect_and_fix_filetype(tar_path)
+    
+    fixed_path, filetype, original_name = detect_and_fix_filetype(tar_path)
 
     if filetype == "pdf":
-        # Not record fail
-        return (file_name, True, 0, 0, "pdf")
+        return (file_name, True, 0, "pdf")
 
-    if filetype != "tar.gz":
+    if filetype == "unknown":
         print(f"Skipping unsupported format: {file_name}")
-        return (file_name, False, 0, 0, "unknown")
+        return (file_name, False, 0, "unknown")
 
     base_name = re.sub(r'\.tar(\.gz)?$', '', file_name)
-    # base_name = re.sub(r'\.tar\.gz$', '', file_name)
-
     extract_path = os.path.join(destination_folder, base_name)
     os.makedirs(extract_path, exist_ok=True)
 
     local_deleted_files = 0
-    local_deleted_folders = 0
 
     try:
-        with tarfile.open(fixed_path, 'r:*') as tar:
-        # with tarfile.open(fixed_path, 'r:gz') as tar:
-            tar.extractall(path=extract_path)
-        print(f"Extracted {file_name}")
+        if filetype == "tar.gz":
+            with tarfile.open(fixed_path, 'r:*') as tar:
+                tar.extractall(path=extract_path)
+            print(f"Extracted {file_name} (as TAR.GZ)")
+        
+        elif filetype == "gz":
+            if original_name is None:
+                original_name = base_name + ".file" 
+                print(f"Warning: Could not detect original filename for {file_name}, saving as {original_name}")
+
+            output_filename = os.path.join(extract_path, original_name)
+
+            with gzip.open(fixed_path, 'rb') as f_in:
+                with open(output_filename, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            print(f"Extracted {file_name} (as GZ)")
+
     except Exception as e:
-        print(f"X   Error extracting {file_name}: {e}")
-        return (file_name, False, 0, 0, "tar_fail")
+        print(f"X    Error extracting {file_name}: {e}")
+        try:
+            shutil.rmtree(extract_path)
+        except Exception:
+            pass
+        return (file_name, False, 0, "tar_fail")
 
-    # Remove figures
-    figure_extensions = [
-        '*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp',
-        '*.pdf', '*.eps', '*.svg', '*.tif', '*.tiff',
-        '*.PNG', '*.JPG', '*.JPEG', '*.PDF', '*.EPS'
-    ]
 
     try:
+        # Duyệt qua tất cả các file trong thư mục đã giải nén
         for root, dirs, files in os.walk(extract_path):
-            for ext in figure_extensions:
-                for file_path in glob.glob(os.path.join(root, ext)):
+            for file_name_in_folder in files:
+                
+                # Lấy phần mở rộng (extension) của file
+                _, ext = os.path.splitext(file_name_in_folder)
+                
+                if ext.lower() not in ['.tex', '.bib']:
+                    file_path = os.path.join(root, file_name_in_folder)
                     try:
                         os.remove(file_path)
                         local_deleted_files += 1
                     except Exception as e:
-                        print(f"X   Cannot delete {file_path}: {e}")
+                        print(f"X    Cannot delete {file_path}: {e}")
 
-            # Remove folder figure
-            for dir_name in dirs[:]:
-                if dir_name.lower() in ['figures', 'figure', 'figs', 'fig', 'images', 'image', 'imgs', 'img']:
-                #if dir_name.lower() in ['figures', 'figure', 'figs', 'fig', 'images', 'image', 'imgs', 'img', 'media']:
-                    dir_path = os.path.join(root, dir_name)
-                    try:
-                        shutil.rmtree(dir_path)
-                        local_deleted_folders += 1
-                        dirs.remove(dir_name)
-                    except Exception as e:
-                        print(f"X   Cannot delete folder {dir_path}: {e}")
+        # Logic không xóa folder (từ các yêu cầu trước) vẫn được giữ nguyên
+        # ...
 
-        # Remove empty folder
-        for root, dirs, files in os.walk(extract_path, topdown=False):
-            if root == extract_path:
-                continue
-            if not dirs and not files:
-                try:
-                    os.rmdir(root)
-                    print(f"Removed empty folder: {root}")
-                except Exception as e:
-                    print(f"X   Cannot remove empty folder {root}: {e}")
-
-        return (file_name, True, local_deleted_files, local_deleted_folders, "tar_ok")
+        return (file_name, True, local_deleted_files, "tar_ok")
 
     except Exception as e:
         print(f"Error cleaning {file_name}: {e}")
-        return (file_name, False, local_deleted_files, local_deleted_folders, "tar_fail")
+        return (file_name, False, local_deleted_files, "tar_fail")
+    # ### KẾT THÚC THAY ĐỔI ###
 
 
 def parallel_extract_and_clean(source_folder, destination_folder, max_parallels=20):
@@ -144,7 +139,6 @@ def parallel_extract_and_clean(source_folder, destination_folder, max_parallels=
     print("=" * 100)
     print()
 
-    # Reset stats
     for k in stats:
         stats[k] = 0
 
@@ -159,7 +153,7 @@ def parallel_extract_and_clean(source_folder, destination_folder, max_parallels=
             tar_path = future_to_tar[future]
             completed += 1
             try:
-                file_name, success, deleted_files, deleted_folders, ftype = future.result()
+                file_name, success, deleted_files, ftype = future.result()
                 with stats_lock:
                     if ftype == "pdf":
                         pass
@@ -168,21 +162,39 @@ def parallel_extract_and_clean(source_folder, destination_folder, max_parallels=
                     else:
                         stats["failed"] += 1
                     stats["deleted_files"] += deleted_files
-                    stats["deleted_folders"] += deleted_folders
 
                 if ftype == "pdf":
-                    status = "PDF copied"
+                    status = "PDF detected"
                 elif success:
                     status = "O Extracted"
                 else:
                     status = "X Failed"
 
                 print(f"[{completed}/{len(tar_files)}] {status}: {file_name} "
-                      f"(deleted: {deleted_files} files, {deleted_folders} folders)")
+                      f"(deleted: {deleted_files} files)")
 
             except Exception as e:
-                print(f"✗ Không thể xóa folder {dir_path}: {str(e)}")
+                file_name = os.path.basename(tar_path)
+                print(f"[{completed}/{len(tar_files)}] ✗ {file_name} - Exception: {e}")
+                with stats_lock:
+                    stats["failed"] += 1
+    
+    print()
+    print("=" * 100)
+    print("Extraction and cleaning complete!\n")
+    print(f"Extracted archives (TAR/GZ): {stats['extracted']}")
+    print(f"Detected PDF files:        {stats['pdfs']}")
+    print(f"X    Failed files:           {stats['failed']}")
+    print(f"Deleted other files:       {stats['deleted_files']}") # Cập nhật log
+    print(f"Output folder: {os.path.abspath(destination_folder)}")
+    print("=" * 100)
+    print()
 
-print(f"\n{'='*50}")
-print(f"Hoàn thành! Đã xóa {deleted_count} file hình ảnh")
-print(f"{'='*50}")
+
+# Run the parallel extraction
+if __name__ == "__main__":
+    parallel_extract_and_clean(
+        source_folder="sources",
+        destination_folder="extracted_and_cleaned_figures",
+        max_parallels=20
+    )

@@ -1,5 +1,10 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:conda",
     "python-envs.defaultPackageManager": "ms-python.python:conda",
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "terminal.integrated.fontFamily": "MesloLGS NF",
+    "terminal.integrated.fontSize": 14,
+    "terminal.integrated.lineHeight": 1.2,
+    "editor.fontFamily": "'Fira Code', 'MesloLGS NF', Consolas, 'Courier New', monospace",
+    "editor.fontLigatures": true
 }

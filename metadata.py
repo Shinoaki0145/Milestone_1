@@ -54,14 +54,14 @@ def get_metadata_all_versions(arxiv_id, client):
         return None
 
     metadata = {
-        'title': final_title,
+        'paper_title': final_title,
         'authors': final_authors,
         'submission_date': submission_date, 
         'revised_dates': revised_dates_list, 
     }
 
     if base_paper.journal_ref:
-        metadata['journal_ref'] = base_paper.journal_ref
+        metadata['publication_venue'] = base_paper.journal_ref
     
     return metadata
 
@@ -135,7 +135,7 @@ def process_metadata_range(start_month, start_id, end_month, end_id, save_dir=".
                 
                 try:
                     with open(output_json_path, 'w', encoding='utf-8') as f:
-                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+                        json.dump(metadata, f, indent=4, ensure_ascii=False)
                     print(f"  -> SUCCESS: Đã lưu {json_filename}")
                     processed_count += 1
                     failed_consecutive = 0
@@ -166,7 +166,7 @@ def process_metadata_range(start_month, start_id, end_month, end_id, save_dir=".
                 
                 try:
                     with open(output_json_path, 'w', encoding='utf-8') as f:
-                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+                        json.dump(metadata, f, indent=4, ensure_ascii=False)
                     print(f"  -> SUCCESS: Đã lưu {json_filename}")
                     processed_count += 1
                     failed_consecutive = 0

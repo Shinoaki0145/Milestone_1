@@ -4,7 +4,6 @@ import time
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
-from collections import deque
 
 # Thread-safe locks and counters
 download_lock = Lock()
@@ -74,31 +73,21 @@ def get_source_all_versions(arxiv_id, save_dir="./sources"):
     else:
         return False
 
-def download_single_paper(arxiv_id, save_dir):
+def download_single_paper(arxiv_id, save_dir, count_stats=True):
     """Wrapper function for parallel execution"""
     success = get_source_all_versions(arxiv_id, save_dir)
     
-    with download_lock:
-        if success:
-            stats["downloaded"] += 1
-        else:
-            stats["failed"] += 1
+    if count_stats:
+        with download_lock:
+            if success:
+                stats["downloaded"] += 1
+            else:
+                stats["failed"] += 1
     
     return (arxiv_id, success)
 
 def download_arxiv_range_parallel(start_month, start_id, end_month, end_id, 
-                                  save_dir="./sources", max_parallels=20):
-    """
-    Download arxiv papers in parallel with sliding window approach
-    
-    Args:
-        start_month: Starting month in format 'YYYY-MM'
-        start_id: Starting paper ID number
-        end_month: Ending month in format 'YYYY-MM'
-        end_id: Ending paper ID number
-        save_dir: Directory to save downloaded sources
-        max_parallels: Number of parallel download threads (default: 20)
-    """
+                                    save_dir="./sources", max_parallels=20):
     
     start_year, start_mon = start_month.split('-')
     end_year, end_mon = end_month.split('-')
@@ -138,8 +127,6 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                     print(f"[{completed}/{len(arxiv_ids)}] {status} {paper_id}")
                 except Exception as e:
                     print(f"[{completed}/{len(arxiv_ids)}] ✗ {arxiv_id} - Exception: {e}")
-                    with download_lock:
-                        stats["failed"] += 1
         
         print(f"Finished {start_month}.\n")
     
@@ -150,67 +137,24 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
         current_id = start_id
         failed_consecutive = 0
         completed_count = 0
+        should_stop = False
+        
+        # Track ID của lần thành công cuối cùng
+        last_success_id = start_id - 1
         
         with ThreadPoolExecutor(max_workers=max_parallels) as executor:
-            # Dictionary to track futures and their IDs
             active_futures = {}
-            results_buffer = {}  # Store results indexed by ID
+            results_buffer = {}
             next_id_to_process = start_id
             
-            # Keep the pipeline full
-            while failed_consecutive < max_consecutive_failures:
-                # Submit new tasks to keep with parallel pool busy
-                while len(active_futures) < max_parallels and failed_consecutive < max_consecutive_failures:
+            while not should_stop:
+                # Submit new tasks
+                while len(active_futures) < max_parallels and not should_stop:
                     arxiv_id = f"{start_prefix}.{current_id:05d}"
-                    future = executor.submit(download_single_paper, arxiv_id, save_dir)
+                    # Không count stats cho các probe downloads
+                    future = executor.submit(download_single_paper, arxiv_id, save_dir, count_stats=False)
                     active_futures[future] = (arxiv_id, current_id)
                     current_id += 1
-                
-                # Wait for at least one to complete
-
-
-                # if active_futures:
-                #     done, _ = as_completed(active_futures.keys()), None
-                    
-                #     for future in list(active_futures.keys()):
-                #         if future.done():
-                #             arxiv_id, id_num = active_futures.pop(future)
-                            
-                #             try:
-                #                 paper_id, success = future.result()
-                #                 results_buffer[id_num] = (paper_id, success)
-                #             except Exception as e:
-                #                 print(f"X {arxiv_id} - Exception: {e}")
-                #                 results_buffer[id_num] = (arxiv_id, False)
-                    
-                #     # Process results in order
-                #     while next_id_to_process in results_buffer:
-                #         paper_id, success = results_buffer.pop(next_id_to_process)
-                #         completed_count += 1
-                #         status = "O" if success else "X"
-                #         print(f"[Phase 1: {completed_count}] {status} {paper_id}")
-                        
-                #         if success:
-                #             failed_consecutive = 0
-                #         else:
-                #             failed_consecutive += 1
-                            
-                #         next_id_to_process += 1
-                        
-                #         # Check if we should stop
-                #         if failed_consecutive >= max_consecutive_failures:
-                #             print(f"\nReached {max_consecutive_failures} consecutive failures.")
-                #             # Cancel remaining futures
-                #             for remaining_future in active_futures.keys():
-                #                 remaining_future.cancel()
-                #             active_futures.clear()
-                #             break
-                
-                # if not active_futures and failed_consecutive < max_consecutive_failures:
-                #     break
-
-
-
 
                 if active_futures:
                     for done_future in as_completed(list(active_futures.keys())):
@@ -223,37 +167,49 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                             print(f"X {arxiv_id} - Exception: {e}")
                             results_buffer[id_num] = (arxiv_id, False)
                         
-                        # Process results in increasing ID order
+                        # Process results in order
                         while next_id_to_process in results_buffer:
                             paper_id, success = results_buffer.pop(next_id_to_process)
                             completed_count += 1
                             status = "O" if success else "X"
-                            print(f"[Phase 1: {completed_count}] {status} {paper_id}")
                             
+                            # Update counters trước
                             if success:
                                 failed_consecutive = 0
+                                last_success_id = next_id_to_process
                             else:
                                 failed_consecutive += 1
                             
-                            next_id_to_process += 1
-                            
-                            # Stop when too many consecutive failures
+                            # Check nếu đạt điều kiện stop
                             if failed_consecutive >= max_consecutive_failures:
-                                print(f"\nReached {max_consecutive_failures} consecutive failures.")
-                                for remaining_future in active_futures.keys():
-                                    remaining_future.cancel()
-                                active_futures.clear()
-                                break
+                                print(f"\nReached {max_consecutive_failures} consecutive failures at ID {next_id_to_process}.")
+                                print(f"  Last successful ID: {last_success_id}")
+                                print(f"  Stopping submission. Discarding all failures after last success...")
+                                should_stop = True
+                            
+                            # Chỉ count nếu paper nằm TRƯỚC hoặc BẰNG last_success_id
+                            # Tất cả papers sau last_success_id đều là probe
+                            if next_id_to_process <= last_success_id or (not should_stop and success):
+                                with download_lock:
+                                    if success:
+                                        stats["downloaded"] += 1
+                                    else:
+                                        stats["failed"] += 1
+                                
+                                print(f"[Phase 1: {completed_count}] {status} {paper_id}")
+                            else:
+                                # Đây là probe download (sau last_success_id), không count
+                                print(f"[Phase 1: {completed_count}] {status} {paper_id} (probe - discarded)")
+                            
+                            next_id_to_process += 1
 
-                        # Exit outer loop if we've hit failure limit
-                        if failed_consecutive >= max_consecutive_failures:
+                        if should_stop:
                             break
 
-                if not active_futures and failed_consecutive < max_consecutive_failures:
+                if not active_futures:
                     break
-
         
-        print(f"Completed {start_month}. No more papers found after {max_consecutive_failures} consecutive failures.\n")
+        print(f"Completed {start_month}.\n")
         
         # Phase 2: Download from end_month
         print(f"Phase 2: Downloading from {end_month} starting at ID 1, going forward to ID {end_id}...")
@@ -277,16 +233,14 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                     print(f"[Phase 2: {completed}/{len(phase2_ids)}] {status} {paper_id}")
                 except Exception as e:
                     print(f"[Phase 2: {completed}/{len(phase2_ids)}] ✗ {arxiv_id} - Exception: {e}")
-                    with download_lock:
-                        stats["failed"] += 1
         
         print(f"Reached end ID {end_id} in {end_month}.")
     
     print()
     print("=" * 100)
     print(f"Download complete!")
-    print(f"Successfully downloaded:    {stats['downloaded']} papers")
-    print(f"x   Failed:                 {stats['failed']} papers")
+    print(f"Successfully downloaded:     {stats['downloaded']} papers")
+    print(f"x   Failed:                  {stats['failed']} papers")
     print(f"Files saved to: {os.path.abspath(save_dir)}")
     print("=" * 100)
     print()
@@ -294,10 +248,14 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
 
 if __name__ == "__main__":
     download_arxiv_range_parallel(
-        start_month="2023-04",
-        start_id=15000,
+        start_month="2023-05",
+        start_id=9939,
         end_month="2023-05", 
-        end_id=10,
+        end_id=9945,
+        # start_month="2023-04",
+        # start_id=15000,
+        # end_month="2023-05", 
+        # end_id=20,
         save_dir="./sources",
         max_parallels=20
     )
