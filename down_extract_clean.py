@@ -2,6 +2,11 @@ import arxiv
 import os
 import time
 import re
+import tarfile
+import glob
+import shutil
+import subprocess
+import gzip
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
@@ -9,15 +14,133 @@ from threading import Lock
 download_lock = Lock()
 stats = {
     "downloaded": 0, 
-    "failed": 0
+    "failed_download": 0,
+    "deleted_version": 0,
+    "extracted": 0,
+    "failed_extract": 0,
+    "deleted_files": 0,
+    "pdfs": 0
 }
 
-def get_source_all_versions(arxiv_id, save_dir="./sources"):
+def detect_and_fix_filetype(tar_path):
+    """
+    Check filetype (tar.gz, PDF, GZ, ...)
+    Returns: (path, filetype, original_name_if_gz)
+    """
+    try:
+        result = subprocess.run(["file", tar_path], capture_output=True, text=True, errors='ignore') # errors
+        output = result.stdout.strip()
+    except FileNotFoundError:
+        print("X 'file' command not found. Please install 'file' utility.")
+        return tar_path, "unknown", None
+    except Exception as e:
+        print(f"X Error running 'file' command on {tar_path}: {e}")
+        return tar_path, "unknown", None
+
+    if "PDF document" in output:
+        with download_lock:
+            stats["pdfs"] += 1
+        print(f"{os.path.basename(tar_path)} => Detected as PDF")
+        return tar_path, "pdf", None
+
+    elif "gzip compressed data" in output:
+        match = re.search(r', was "([^"]+)"', output)
+        if match:
+            original_name = os.path.basename(match.group(1))
+            return tar_path, "gz", original_name
+        else:
+            return tar_path, "tar.gz", None
+
+    elif "tar archive" in output:
+        return tar_path, "tar.gz", None
+
+    else:
+        print(f"Unknown format: {os.path.basename(tar_path)} => {output}")
+        return tar_path, "unknown", None
+
+def extract_and_clean_single_tar(tar_path, destination_folder, base_name):
+    file_name = os.path.basename(tar_path)
+    
+    fixed_path, filetype, original_name = detect_and_fix_filetype(tar_path)
+
+    if filetype == "pdf":
+        return (file_name, True, 0, "pdf")
+
+    if filetype == "unknown":
+        print(f"Skipping unsupported format: {file_name}")
+        return (file_name, False, 0, "unknown")
+
+    # Use the provided base_name (cleaned without dots)
+    extract_path = os.path.join(destination_folder, base_name)
+    os.makedirs(extract_path, exist_ok=True)
+
+    local_deleted_files = 0
+
+    try:
+        if filetype == "tar.gz":
+            with tarfile.open(fixed_path, 'r:*') as tar:
+                tar.extractall(path=extract_path)
+            print(f"Extracted {file_name} (as TAR.GZ)")
+
+        elif filetype == "gz":
+            if original_name is None:
+                original_name = base_name + ".file" 
+                print(f"Warning: Could not detect original filename for {file_name}, saving as {original_name}")
+
+            output_filename = os.path.join(extract_path, original_name)
+
+            with gzip.open(fixed_path, 'rb') as f_in:
+                with open(output_filename, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            print(f"Extracted {file_name} (as GZ)")
+
+    except Exception as e:
+        print(f"X    Error extracting {file_name}: {e}")
+        try:
+            shutil.rmtree(extract_path)
+        except Exception:
+            pass
+        return (file_name, False, 0, "tar_fail")
+
+    try:
+        # Duyệt qua tất cả các file trong thư mục đã giải nén
+        for root, dirs, files in os.walk(extract_path):
+            for file_name_in_folder in files:
+                
+                # Lấy phần mở rộng (extension) của file
+                _, ext = os.path.splitext(file_name_in_folder)
+                
+                if ext.lower() not in ['.tex', '.bib']:
+                    file_path = os.path.join(root, file_name_in_folder)
+                    try:
+                        os.remove(file_path)
+                        local_deleted_files += 1
+                    except Exception as e:
+                        print(f"X    Cannot delete {file_path}: {e}")
+
+        return (file_name, True, local_deleted_files, "tar_ok")
+
+    except Exception as e:
+        print(f"Error cleaning {file_name}: {e}")
+        return (file_name, False, local_deleted_files, "tar_fail")
+
+def get_source_all_versions(arxiv_id, save_dir="./23127238"):
     os.makedirs(save_dir, exist_ok=True)
     
     client = arxiv.Client()
     versions_downloaded = 0
     latest_version = 0
+
+    # Split arxiv_id into prefix and suffix
+    if '.' in arxiv_id:
+        prefix, suffix = arxiv_id.split('.')
+    else:
+        print(f"X  ERROR: Invalid arxiv_id format {arxiv_id}")
+        return False
+
+    # Create paper folder: yymm-id
+    paper_folder = os.path.join(save_dir, f"{prefix}-{suffix}")
+    os.makedirs(paper_folder, exist_ok=True)
 
     try:
         search_base = arxiv.Search(id_list=[arxiv_id])
@@ -38,56 +161,81 @@ def get_source_all_versions(arxiv_id, save_dir="./sources"):
         print(f"X  ERROR: No paper found with ID {arxiv_id} (even v1)")
         return False
     except Exception as e:
-        print(f"X  ERROR when finding latest version of {arxiv_id}: {e}")
+        print(f"X  ERROR: When finding latest version of {arxiv_id}: {e}")
         return False
 
     for v in range(1, latest_version + 1):
         versioned_id = f"{arxiv_id}v{v}"
-        
+        # Clean base_name for version folder: yymm-idvN
+        clean_version_base = f"{prefix}-{suffix}v{v}"
+
         try:
             search_version = arxiv.Search(id_list=[versioned_id])
             paper_version = next(client.results(search_version))
 
             filename = f"{versioned_id}.tar.gz"
+            temp_filepath = os.path.join(paper_folder, filename)
             print(f"    Downloading: {filename}...")
 
-            paper_version.download_source(dirpath=save_dir, filename=filename)
+            paper_version.download_source(dirpath=paper_folder, filename=filename)
 
-            versions_downloaded += 1
+            # Immediately extract and clean
+            file_name, success, deleted_files, ftype = extract_and_clean_single_tar(temp_filepath, paper_folder, clean_version_base)
+            
+            if success:
+                versions_downloaded += 1
+                with download_lock:
+                    stats["extracted"] += 1
+                    stats["deleted_files"] += deleted_files
+                print(f"    Extracted and cleaned: {versioned_id}")
+            else:
+                with download_lock:
+                    stats["failed_extract"] += 1
+                print(f"X   Failed to extract/clean: {versioned_id}")
+
+            # Delete the tar.gz file after extraction
+            try:
+                os.remove(temp_filepath)
+                print(f"    Deleted temporary file: {filename}")
+            except Exception as e:
+                print(f"X   Error deleting {filename}: {e}")
+
             time.sleep(0.5) 
 
         except StopIteration:
             print(f"X  ERROR: Found v{latest_version} but could not find {versioned_id}?")
+            with download_lock:
+                stats["deleted_version"] += 1
             continue 
         
         except Exception as e:
-            print(f"X  ERROR when downloading {versioned_id}: {e}")
+            # ---- any other error → thực sự failed ----
+            print(f"X Download error for {versioned_id}: {e}")
             continue
             
     if versions_downloaded == 0 and latest_version > 0:
         print(f"X  ERROR: Found v{latest_version} but could not download any versions.")
         return False
     elif versions_downloaded == latest_version:
-        print(f"  Successfully downloaded: {versions_downloaded} / {latest_version} versions for {arxiv_id}.")
+        with download_lock:
+            stats["downloaded"] += 1
+        print(f"  Successfully downloaded and extracted: {versions_downloaded} / {latest_version} versions for {arxiv_id}.")
         return True
     else:
+        print(f"X  ERROR: Only downloaded {versions_downloaded} / {latest_version} versions for {arxiv_id}.")
         return False
 
 def download_single_paper(arxiv_id, save_dir, count_stats=True):
     """Wrapper function for parallel execution"""
     success = get_source_all_versions(arxiv_id, save_dir)
-    
-    if count_stats:
+    if count_stats and not success:
         with download_lock:
-            if success:
-                stats["downloaded"] += 1
-            else:
-                stats["failed"] += 1
-    
-    return (arxiv_id, success)
+            stats["failed_download"] += 1
+    return arxiv_id, success
+
 
 def download_arxiv_range_parallel(start_month, start_id, end_month, end_id, 
-                                    save_dir="./sources", max_parallels=20):
+                                    save_dir="./23127238", max_parallels=20):
     
     start_year, start_mon = start_month.split('-')
     end_year, end_mon = end_month.split('-')
@@ -96,8 +244,8 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
     end_prefix = end_year[2:] + end_mon
     
     # Reset stats
-    stats["downloaded"] = 0
-    stats["failed"] = 0
+    for k in stats:
+        stats[k] = 0
     
     max_consecutive_failures = 3
     
@@ -194,7 +342,7 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                                     if success:
                                         stats["downloaded"] += 1
                                     else:
-                                        stats["failed"] += 1
+                                        stats["failed_download"] += 1
                                 
                                 print(f"[Phase 1: {completed_count}] {status} {paper_id}")
                             else:
@@ -238,57 +386,62 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
     
     print()
     print("=" * 100)
-    print(f"Download complete!")
-    print(f"Successfully downloaded:     {stats['downloaded']} papers")
-    print(f"x   Failed:                  {stats['failed']} papers")
-    print(f"Files saved to: {os.path.abspath(save_dir)}")
+    print(f"Download, extraction, and cleaning complete!")
+    print(f"  Papers fully downloaded  : {stats['downloaded']}")
+    print(f"  Real download failures   : {stats['failed_download']}")
+    print(f"  Versions deleted (404)   : {stats['deleted_version']}")
+    print(f"  Versions extracted       : {stats['extracted']}")
+    print(f"  Extract failures         : {stats['failed_extract']}")
+    print(f"  PDFs detected            : {stats['pdfs']}")
+    print(f"  Other files deleted      : {stats['deleted_files']}")
+    print(f"  Output folder            : {os.path.abspath('./23127238')}")
     print("=" * 100)
     print()
 
 
 if __name__ == "__main__":
+    # Configuration
+    START_MONTH = "2023-05"
+    START_ID = 9938
+    END_MONTH = "2023-05"
+    END_ID = 9950
+    SAVE_DIR = "./23127238"
+    MAX_PARALLELS = 20
+    
+    
+    # # Đạt
+    # START_MONTH = "2023-04"
+    # START_ID = 14607
+    # END_MONTH = "2023-05"
+    # END_ID = 4592
+    # SAVE_DIR = "./23127238"
+    # MAX_PARALLELS = 20
+    
+    
+    # # Nhân
+    # START_MONTH = "2023-05"
+    # START_ID = 4593
+    # END_MONTH = "2023-05"
+    # END_ID = 9594
+    # SAVE_DIR = "./23127238"
+    # MAX_PARALLELS = 20
+    
+    
+    # #Việt
+    # START_MONTH = "2023-05"
+    # START_ID = 9595
+    # END_MONTH = "2023-05"
+    # END_ID = 14596
+    # SAVE_DIR = "./23127238"
+    # MAX_PARALLELS = 20
+    
+    
+    
     download_arxiv_range_parallel(
-        start_month="2023-05",
-        start_id=9939,
-        end_month="2023-05", 
-        end_id=9945,
-        # start_month="2023-04",
-        # start_id=15000,
-        # end_month="2023-05", 
-        # end_id=20,
-        save_dir="./sources",
-        max_parallels=20
+        start_month=START_MONTH,
+        start_id=START_ID,
+        end_month=END_MONTH,
+        end_id=END_ID,
+        save_dir=SAVE_DIR,
+        max_parallels=MAX_PARALLELS
     )
-        
-# # Đạt
-# if __name__ == "__main__":
-#     download_arxiv_range_parallel(
-#         start_month="2023-04",
-#         start_id=14607,
-#         end_month="2023-05", 
-#         end_id=4592,
-#         save_dir="./sources",
-#         max_parallels=20
-#     )
-    
-# # Nhân
-# if __name__ == "__main__":
-#     download_arxiv_range(
-#         start_month="2023-05",
-#         start_id=4593,
-#         end_month="2023-05", 
-#         end_id=9594,
-#         save_dir="./sources",
-#         max_parallels=20
-#     )
-    
-# # Việt 
-# if __name__ == "__main__":
-#     download_arxiv_range(
-#         start_month="2023-05",
-#         start_id=9595,
-#         end_month="2023-05", 
-#         end_id=14596,
-#         save_dir="./sources",
-#         max_parallels=20
-#     )
