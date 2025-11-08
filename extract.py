@@ -181,28 +181,8 @@ def parallel_extract_and_clean(source_folder, destination_folder, max_parallels=
                       f"(deleted: {deleted_files} files, {deleted_folders} folders)")
 
             except Exception as e:
-                file_name = os.path.basename(tar_path)
-                print(f"[{completed}/{len(tar_files)}] ✗ {file_name} - Exception: {e}")
-                with stats_lock:
-                    stats["failed"] += 1
-    
-    print()
-    print("=" * 100)
-    print("Extraction and cleaning complete!\n")
-    print(f"Extracted TAR.GZ files: {stats['extracted']}")
-    print(f"Convert PDF files:      {stats['copied_pdfs']}")
-    print(f"X   Failed files:       {stats['failed']}")
-    print(f"Deleted figure files:   {stats['deleted_files']}")
-    print(f"Deleted figure folders: {stats['deleted_folders']}")
-    print(f"Output folder: {os.path.abspath(destination_folder)}")
-    print("=" * 100)
-    print()
+                print(f"✗ Không thể xóa folder {dir_path}: {str(e)}")
 
-
-# Run the parallel extraction
-if __name__ == "__main__":
-    parallel_extract_and_clean(
-        source_folder="sources",
-        destination_folder="extracted_and_cleaned_figures",
-        max_parallels=20
-    )
+print(f"\n{'='*50}")
+print(f"Hoàn thành! Đã xóa {deleted_count} file hình ảnh")
+print(f"{'='*50}")
