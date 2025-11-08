@@ -52,9 +52,6 @@ def get_metadata_all_versions(arxiv_id, client):
     final_authors = [author.name for author in base_paper.authors]
     submission_date = base_paper.published.isoformat()
     revised_dates_list = [base_paper.updated.isoformat()] if latest_version > 1 else []
-
-    if base_paper.journal_ref:
-        publication_venue = base_paper.journal_ref
             
     # --- Bước 3: Tổng hợp kết quả ---
     if submission_date is None:
@@ -66,8 +63,10 @@ def get_metadata_all_versions(arxiv_id, client):
         'authors': final_authors,
         'submission_date': submission_date, # Ngày nộp (từ v1)
         'revised_dates': revised_dates_list,  # Danh sách ngày sửa (từ v2, v3...)
-        'publication_venue': publication_venue if 'publication_venue' in locals() else None
     }
+
+    if base_paper.journal_ref:
+        metadata['journal_ref'] = base_paper.journal_ref
     
     return metadata
 
