@@ -57,7 +57,7 @@ def get_references_json(arxiv_id, output_json_path):
                     ref_metadata = {
                         "title": paper.title,
                         "authors": [a.name for a in paper.authors], 
-                        "submission_date": paper.published.isoformat(),
+                        "submission_date": paper.published.strftime("%Y-%m-%d"),
                         "semantic_scholar_id": ref.get("paperId")
                     }
                     output_references_dict[base_ref_id] = ref_metadata

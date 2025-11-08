@@ -46,9 +46,9 @@ def get_metadata_all_versions(arxiv_id, client):
     
     final_title = base_paper.title
     final_authors = [author.name for author in base_paper.authors]
-    submission_date = base_paper.published.isoformat()
-    revised_dates_list = [base_paper.updated.isoformat()] if latest_version > 1 else []
-            
+    submission_date = base_paper.published.strftime("%Y-%m-%d")
+    revised_dates_list = [base_paper.updated.strftime("%Y-%m-%d")] if latest_version > 1 else []
+
     if submission_date is None:
         print(f"  LỖI: Không thể lấy được metadata (thậm chí v1) cho {arxiv_id}.")
         return None
