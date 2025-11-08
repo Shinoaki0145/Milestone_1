@@ -50,37 +50,11 @@ def get_metadata_all_versions(arxiv_id, client):
     # Dùng để lưu metadata từ phiên bản mới nhất
     final_title = base_paper.title
     final_authors = [author.name for author in base_paper.authors]
-    final_venue = base_paper.journal_ref
+    submission_date = base_paper.published.isoformat()
+    revised_dates_list = [base_paper.updated.isoformat()] if latest_version > 1 else []
 
-    for v in range(1, latest_version + 1):
-        versioned_id = f"{arxiv_id}v{v}"
-        
-        try:
-            search_version = arxiv.Search(id_list=[versioned_id])
-            paper_version = next(client.results(search_version))
-            
-            # Ngày 'published' của paper_version CHÍNH LÀ ngày nộp/sửa đổi
-            # của phiên bản đó.
-            version_date = paper_version.published.isoformat()
-
-            if v == 1:
-                submission_date = version_date
-            else:
-                revised_dates_list.append(version_date)
-            
-            # Lấy metadata từ phiên bản mới nhất (an toàn nhất)
-            if v == latest_version:
-                 final_title = paper_version.title
-                 final_authors = [author.name for author in paper_version.authors]
-
-            time.sleep(0.5) # Giảm tải cho API
-
-        except StopIteration:
-            print(f"  LỖI: Đã tìm thấy v{latest_version} nhưng không thể tìm thấy {versioned_id}?")
-            continue 
-        except Exception as e:
-            print(f"  LỖI khi lấy metadata cho {versioned_id}: {e}")
-            continue
+    if base_paper.journal_ref:
+        publication_venue = base_paper.journal_ref
             
     # --- Bước 3: Tổng hợp kết quả ---
     if submission_date is None:
@@ -92,6 +66,7 @@ def get_metadata_all_versions(arxiv_id, client):
         'authors': final_authors,
         'submission_date': submission_date, # Ngày nộp (từ v1)
         'revised_dates': revised_dates_list,  # Danh sách ngày sửa (từ v2, v3...)
+        'publication_venue': publication_venue if 'publication_venue' in locals() else None
     }
     
     return metadata
@@ -226,9 +201,9 @@ if __name__ == "__main__":
     # Sử dụng cấu hình giống hệt file của bạn
     process_metadata_range(
         start_month="2023-04",
-        start_id=14607,
+        start_id=15000,
         end_month="2023-05", 
-        end_id=4592,
+        end_id=10,
         save_dir="./metadata_output" # Đổi tên thư mục lưu
     )
 

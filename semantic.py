@@ -71,7 +71,8 @@ def get_references_json(arxiv_id, output_json_path):
                         "title": paper.title,
                         "authors": [a.name for a in paper.authors], 
                         "submission_date": paper.published.isoformat(),
-                        "revised_dates": [paper.updated.isoformat()]
+                        # "revised_dates": [paper.updated.isoformat()]
+                        "semantic_scholar_id": ref.get("paperId")
                     }
                     output_references_dict[base_ref_id] = ref_metadata
                     time.sleep(0.5) 
@@ -156,7 +157,7 @@ def run_semantic_for_range(start_month, start_id, end_month, end_id,
             
             if get_references_json(arxiv_id, output_json_path):
                 processed_count += 1
-            failed_consecutive = 0
+                failed_consecutive = 0
             # else:
             #     print(f"  File v1 not found in {source_dir}.")
             #     failed_consecutive += 1
@@ -198,9 +199,9 @@ def run_semantic_for_range(start_month, start_id, end_month, end_id,
 if __name__ == "__main__":
     run_semantic_for_range(
         start_month="2023-04",
-        start_id=14607,
+        start_id=15000,
         end_month="2023-05", 
-        end_id=4592,
+        end_id=10,
         source_dir="./sources",       
         references_dir="./references" 
     )
