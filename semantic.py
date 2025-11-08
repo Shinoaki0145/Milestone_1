@@ -30,21 +30,8 @@ def get_references_json(arxiv_id, output_json_path):
         time.sleep(3) 
 
         if response.status_code == 429:
-            retries = 3
-            while retries > 0:
-                retries -= 1
-                print(f"    LỖI 429: Bị Rate Limit. Chờ 20 giây (Còn {retries} lần thử)...")
-                time.sleep(20)
-                # Thử gọi lại
-                response = requests.get(url, params=params)
-                print("    Đang chờ 3 giây (Rate Limit)...")
-                time.sleep(3)
-                if response.status_code != 429:
-                    break # Thoát vòng lặp retry nếu thành công
-            
-            if response.status_code == 429:
-                print(f"    Thất bại sau 3 lần thử. Bỏ qua bài này.")
-                return False
+            print(f"    LỖI 429: Bị Rate Limit. Chờ 20 giây")
+            time.sleep(20)
 
         if response.status_code != 200:
             print(f"    LỖI: Semantic Scholar API trả về {response.status_code}")
@@ -71,7 +58,6 @@ def get_references_json(arxiv_id, output_json_path):
                         "title": paper.title,
                         "authors": [a.name for a in paper.authors], 
                         "submission_date": paper.published.isoformat(),
-                        # "revised_dates": [paper.updated.isoformat()]
                         "semantic_scholar_id": ref.get("paperId")
                     }
                     output_references_dict[base_ref_id] = ref_metadata
@@ -79,7 +65,6 @@ def get_references_json(arxiv_id, output_json_path):
                 except Exception:
                     pass 
 
-        # SỬA LẠI: Lưu vào 'output_json_path'
         with open(output_json_path, "w", encoding="utf-8") as f:
             json.dump(output_references_dict, f, indent=4, ensure_ascii=False)
             
@@ -90,7 +75,6 @@ def get_references_json(arxiv_id, output_json_path):
         print(f"    LỖI (requests): {e}")
         return False
     except Exception as e:
-        # Bắt lỗi (ví dụ: 'NoneType' hoặc 'Errno 2')
         print(f"    LỖI (ngoại lệ chung): {e}")
         return False
 

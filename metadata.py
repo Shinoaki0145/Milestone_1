@@ -16,7 +16,6 @@ def get_metadata_all_versions(arxiv_id, client):
     latest_version = 0
     base_paper = None
 
-    # --- Bước 1: Tìm phiên bản mới nhất ---
     try:
         # Tìm paper cơ sở để biết phiên bản mới nhất là bao nhiêu
         search_base = arxiv.Search(id_list=[arxiv_id])
@@ -39,21 +38,17 @@ def get_metadata_all_versions(arxiv_id, client):
     except Exception as e:
         print(f"  LỖI khi tìm phiên bản mới nhất của {arxiv_id}: {e}")
         return None
-
-    # --- Bước 2: Lặp qua từng phiên bản để lấy ngày ---
     
     print(f"  Tìm thấy {latest_version} phiên bản cho {arxiv_id}. Đang lấy metadata...")
     
     submission_date = None
     revised_dates_list = []
     
-    # Dùng để lưu metadata từ phiên bản mới nhất
     final_title = base_paper.title
     final_authors = [author.name for author in base_paper.authors]
     submission_date = base_paper.published.isoformat()
     revised_dates_list = [base_paper.updated.isoformat()] if latest_version > 1 else []
             
-    # --- Bước 3: Tổng hợp kết quả ---
     if submission_date is None:
         print(f"  LỖI: Không thể lấy được metadata (thậm chí v1) cho {arxiv_id}.")
         return None
@@ -61,8 +56,8 @@ def get_metadata_all_versions(arxiv_id, client):
     metadata = {
         'title': final_title,
         'authors': final_authors,
-        'submission_date': submission_date, # Ngày nộp (từ v1)
-        'revised_dates': revised_dates_list,  # Danh sách ngày sửa (từ v2, v3...)
+        'submission_date': submission_date, 
+        'revised_dates': revised_dates_list, 
     }
 
     if base_paper.journal_ref:
@@ -84,18 +79,15 @@ def process_metadata_range(start_month, start_id, end_month, end_id, save_dir=".
     
     processed_count = 0
     failed_consecutive = 0
-    max_consecutive_failures = 3 # Giống file của bạn
+    max_consecutive_failures = 3 
     
     print(f"Starting metadata processing from {start_prefix}.{start_id:05d} to {end_prefix}.{end_id:05d}")
     print(f"Saving .json files to directory: {save_dir}\n")
     
-    # Tạo thư mục lưu trữ (giống logic file của bạn)
     os.makedirs(save_dir, exist_ok=True)
     
-    # Tạo MỘT client để tái sử dụng, hiệu quả hơn
     client = arxiv.Client()
     
-    # --- TRƯỜNG HỢP 1: TRONG CÙNG 1 THÁNG ---
     if start_month == end_month:
         print(f"Phase: Processing all from {start_month} ({start_id} → {end_id})...")
         current_id = start_id
@@ -127,7 +119,6 @@ def process_metadata_range(start_month, start_id, end_month, end_id, save_dir=".
             current_id += 1
         print(f"Finished {start_month}.\n")
 
-    # --- TRƯỜNG HỢP 2: KHÁC THÁNG (LOGIC 2 GIAI ĐOẠN) ---
     else:
         # Phase 1: Xử lý tháng đầu tiên
         print(f"Phase 1: Processing {start_month} starting at ID {start_id}...")
