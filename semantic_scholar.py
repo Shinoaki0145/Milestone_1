@@ -4,9 +4,9 @@ import re
 import json
 import time
 import requests
-import shutil  # <-- THÊM ĐỂ XÓA THƯ MỤC
+import shutil
 
-# Thống kê toàn cục
+# Global statistics
 stats = {
     "processed": 0,
     "failed": 0,
@@ -33,7 +33,7 @@ def get_references_json(arxiv_id, save_dir, count_as_failed=True, cleanup_on_pro
     paper_folder = os.path.join(save_dir, f"{prefix}-{suffix}")
     output_path = os.path.join(paper_folder, "references.json")
 
-    # Tạo thư mục tạm (sẽ xóa nếu fail khi dò)
+    # Make temp folder - it will be deleted if probe fails
     os.makedirs(paper_folder, exist_ok=True)
 
     url = f"https://api.semanticscholar.org/graph/v1/paper/arXiv:{arxiv_id}"
@@ -48,7 +48,7 @@ def get_references_json(arxiv_id, save_dir, count_as_failed=True, cleanup_on_pro
         time.sleep(3)
 
         if response.status_code == 429:
-            print(f"429 RATE LIMITED → Adding {arxiv_id} to retry list")
+            print(f"429 RATE LIMITED => Adding {arxiv_id} to retry list")
             rate_limited_ids.append(arxiv_id)
             stats["rate_limited"] += 1
             if cleanup_on_probe_fail:
@@ -106,7 +106,7 @@ def get_references_json(arxiv_id, save_dir, count_as_failed=True, cleanup_on_pro
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(references_dict, f, indent=4, ensure_ascii=False)
 
-        print(f"SUCCESS: Saved {len(references_dict)} refs → {os.path.basename(paper_folder)}")
+        print(f"SUCCESS: Saved {len(references_dict)} refs => {os.path.basename(paper_folder)}")
         return True
 
     except requests.exceptions.RequestException as e:
@@ -133,10 +133,9 @@ def get_references_json(arxiv_id, save_dir, count_as_failed=True, cleanup_on_pro
         return False
 
 
-def run_semantic_range_sequential(
-    start_month, start_id, end_month, end_id,
-    save_dir="./23127238"
-):
+def run_semantic_range_sequential(start_month, start_id, end_month, end_id, 
+                                    save_dir="./23127238"):
+    
     global rate_limited_ids
 
     # Reset
@@ -150,11 +149,10 @@ def run_semantic_range_sequential(
 
     max_consecutive_failures = 3
     print(f"Starting SEMANTIC processing (sequential, no threads)")
-    print(f"Range: {start_prefix}.{start_id:05d} → {end_prefix}.{end_id:05d}")
+    print(f"Range: {start_prefix}.{start_id:05d} => {end_prefix}.{end_id:05d}")
 
     if start_month == end_month:
-        # === CÙNG 1 THÁNG ===
-        print(f"Phase: Processing {start_month} ({start_id} → {end_id})...")
+        print(f"Phase: Processing {start_month} ({start_id} => {end_id})...")
         current_id = start_id
         total = end_id - start_id + 1
 
@@ -171,40 +169,92 @@ def run_semantic_range_sequential(
         print(f"Finished {start_month}.\n")
 
     else:
-        # === PHASE 1: DÒ GIỚI HẠN – XÓA THƯ MỤC KHI FAIL ===
+        # # Phase 1: Download from start_month with sliding window
+        # print(f"Phase 1: Probing {start_month} from ID {start_id}...")
+        # current_id = start_id
+        # failed_consecutive = 0
+        # last_success_id = start_id - 1
+
+        # while failed_consecutive < max_consecutive_failures:
+        #     arxiv_id = f"{start_prefix}.{current_id:05d}"
+        #     print(f"\n[Phase 1] Probing {arxiv_id}")
+
+        #     success = get_references_json(
+        #         arxiv_id, save_dir,
+        #         count_as_failed=False,
+        #         cleanup_on_probe_fail=True
+        #     )
+
+        #     if success:
+        #         stats["processed"] += 1
+        #         failed_consecutive = 0
+        #         last_success_id = current_id
+        #     else:
+        #         failed_consecutive += 1
+
+        #     if failed_consecutive >= max_consecutive_failures:
+        #         print(f"\n{max_consecutive_failures} consecutive failures => Stopping Phase 1")
+        #         print(f"  Last success: {start_prefix}.{last_success_id:05d}")
+        #         break
+
+        #     current_id += 1
+
+        # print(f"Completed {start_month}.\n")
+        
+        
+        
+        # Phase 1: Download from start_month with sliding window
         print(f"Phase 1: Probing {start_month} from ID {start_id}...")
         current_id = start_id
         failed_consecutive = 0
-        last_success_id = start_id - 1
+        last_success_id = start_id - 1 # Track ID of last successful download
+        recent_failed_folders = []  # Save recent failed folders for cleanup
 
         while failed_consecutive < max_consecutive_failures:
             arxiv_id = f"{start_prefix}.{current_id:05d}"
             print(f"\n[Phase 1] Probing {arxiv_id}")
 
+            # Don't clean up on probe fail yet
             success = get_references_json(
                 arxiv_id, save_dir,
-                count_as_failed=False,        # Không tính vào failed
-                cleanup_on_probe_fail=True    # XÓA THƯ MỤC NẾU FAIL
+                count_as_failed=False,
+                cleanup_on_probe_fail=False
             )
+
+            folder_path = os.path.join(save_dir, f"{start_prefix}-{current_id:05d}")
 
             if success:
                 stats["processed"] += 1
                 failed_consecutive = 0
+                recent_failed_folders.clear()
                 last_success_id = current_id
             else:
                 failed_consecutive += 1
+                recent_failed_folders.append(folder_path)
+                
+                if len(recent_failed_folders) > max_consecutive_failures:
+                    recent_failed_folders.pop(0)
 
             if failed_consecutive >= max_consecutive_failures:
-                print(f"\n{max_consecutive_failures} consecutive failures → Stopping Phase 1")
+                print(f"\n{max_consecutive_failures} consecutive failures => Stopping Phase 1")
                 print(f"  Last success: {start_prefix}.{last_success_id:05d}")
+
+                print("  Cleaning up last 3 failed folders...")
+                for f in recent_failed_folders:
+                    try:
+                        shutil.rmtree(f)
+                        print(f"   - Deleted {f}")
+                    except Exception as e:
+                        print(f"   - Could not delete {f}: {e}")
                 break
 
             current_id += 1
 
         print(f"Completed {start_month}.\n")
 
-        # === PHASE 2: XỬ LÝ THẬT – KHÔNG XÓA ===
-        print(f"Phase 2: Processing {end_month} from 00001 → {end_id}...")
+
+        # Phase 2: Download from end_month
+        print(f"Phase 2: Processing {end_month} from 00001 => {end_id}...")
         for current_id in range(1, end_id + 1):
             arxiv_id = f"{end_prefix}.{current_id:05d}"
             print(f"\n[Phase 2] {arxiv_id}")
@@ -215,7 +265,7 @@ def run_semantic_range_sequential(
 
         print(f"Reached end ID {end_id} in {end_month}.")
 
-    # === RETRY RATE LIMIT ===
+    # Retry rate-limited IDs
     if rate_limited_ids:
         print(f"\n{'='*60}")
         print(f"RETRYING {len(rate_limited_ids)} RATE-LIMITED IDs...")
@@ -223,8 +273,8 @@ def run_semantic_range_sequential(
 
         retry_success = 0
         for arxiv_id in rate_limited_ids:
-            print(f"\nRetrying {arxiv_id} (10s delay)...")
-            time.sleep(10)
+            print(f"\nRetrying {arxiv_id} (30s delay)...")
+            time.sleep(30)
             if get_references_json(arxiv_id, save_dir, count_as_failed=True, cleanup_on_probe_fail=False):
                 retry_success += 1
                 stats["processed"] += 1
@@ -244,13 +294,16 @@ def run_semantic_range_sequential(
 
 if __name__ == "__main__":
     # Configuration
+    
+    # TEST
     START_MONTH = "2023-04"
     START_ID = 15010
     END_MONTH = "2023-05"
     END_ID = 1
     SAVE_DIR = "./23127238"
     
-    # # Đạt
+    
+    # # BÁ ĐẠT
     # START_MONTH = "2023-04"
     # START_ID = 14607
     # END_MONTH = "2023-05"
@@ -258,7 +311,7 @@ if __name__ == "__main__":
     # SAVE_DIR = "./23127238"
     
     
-    # # Nhân
+    # # THIỆN NHÂN
     # START_MONTH = "2023-05"
     # START_ID = 4593
     # END_MONTH = "2023-05"
@@ -266,7 +319,7 @@ if __name__ == "__main__":
     # SAVE_DIR = "./23127238"
     
     
-    # #Việt
+    # # NAM VIỆT
     # START_MONTH = "2023-05"
     # START_ID = 9595
     # END_MONTH = "2023-05"

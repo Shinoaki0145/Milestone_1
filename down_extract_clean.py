@@ -12,6 +12,8 @@ from threading import Lock
 
 # Thread-safe locks and counters
 download_lock = Lock()
+
+# Global statistics
 stats = {
     "downloaded": 0, 
     "failed_download": 0,
@@ -31,7 +33,7 @@ def detect_and_fix_filetype(tar_path):
         result = subprocess.run(["file", tar_path], capture_output=True, text=True, errors='ignore') # errors
         output = result.stdout.strip()
     except FileNotFoundError:
-        print("X 'file' command not found. Please install 'file' utility.")
+        print("X 'file' command not found. Please install 'file' utility")
         return tar_path, "unknown", None
     except Exception as e:
         print(f"X Error running 'file' command on {tar_path}: {e}")
@@ -57,6 +59,7 @@ def detect_and_fix_filetype(tar_path):
     else:
         print(f"Unknown format: {os.path.basename(tar_path)} => {output}")
         return tar_path, "unknown", None
+
 
 def extract_and_clean_single_tar(tar_path, destination_folder, base_name):
     file_name = os.path.basename(tar_path)
@@ -102,12 +105,12 @@ def extract_and_clean_single_tar(tar_path, destination_folder, base_name):
             pass
         return (file_name, False, 0, "tar_fail")
 
+    # Cleaning: remove file if it is not .tex and .bib files
+
     try:
-        # Duyệt qua tất cả các file trong thư mục đã giải nén
         for root, dirs, files in os.walk(extract_path):
             for file_name_in_folder in files:
                 
-                # Lấy phần mở rộng (extension) của file
                 _, ext = os.path.splitext(file_name_in_folder)
                 
                 if ext.lower() not in ['.tex', '.bib']:
@@ -123,6 +126,7 @@ def extract_and_clean_single_tar(tar_path, destination_folder, base_name):
     except Exception as e:
         print(f"Error cleaning {file_name}: {e}")
         return (file_name, False, local_deleted_files, "tar_fail")
+
 
 def get_source_all_versions(arxiv_id, save_dir="./23127238"):
     os.makedirs(save_dir, exist_ok=True)
@@ -209,21 +213,21 @@ def get_source_all_versions(arxiv_id, save_dir="./23127238"):
             continue 
         
         except Exception as e:
-            # ---- any other error → thực sự failed ----
             print(f"X Download error for {versioned_id}: {e}")
             continue
             
     if versions_downloaded == 0 and latest_version > 0:
-        print(f"X  ERROR: Found v{latest_version} but could not download any versions.")
+        print(f"X  ERROR: Found v{latest_version} but could not download any versions")
         return False
     elif versions_downloaded == latest_version:
         with download_lock:
             stats["downloaded"] += 1
-        print(f"  Successfully downloaded and extracted: {versions_downloaded} / {latest_version} versions for {arxiv_id}.")
+        print(f"  Successfully downloaded and extracted: {versions_downloaded} / {latest_version} versions for {arxiv_id}")
         return True
     else:
-        print(f"X  ERROR: Only downloaded {versions_downloaded} / {latest_version} versions for {arxiv_id}.")
+        print(f"X  ERROR: Only downloaded {versions_downloaded} / {latest_version} versions for {arxiv_id}")
         return False
+
 
 def download_single_paper(arxiv_id, save_dir, count_stats=True):
     """Wrapper function for parallel execution"""
@@ -235,7 +239,7 @@ def download_single_paper(arxiv_id, save_dir, count_stats=True):
 
 
 def download_arxiv_range_parallel(start_month, start_id, end_month, end_id, 
-                                    save_dir="./23127238", max_parallels=20):
+                                    save_dir="./23127238", max_parallels=10):
     
     start_year, start_mon = start_month.split('-')
     end_year, end_mon = end_month.split('-')
@@ -254,7 +258,7 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
     print(f"Saving to directory: {save_dir}\n")
     
     if start_month == end_month:
-        print(f"Phase: Downloading all from {start_month} ({start_id} → {end_id})...")
+        print(f"Phase: Downloading all from {start_month} ({start_id} => {end_id})...")
         
         arxiv_ids = [f"{start_prefix}.{current_id:05d}" for current_id in range(start_id, end_id + 1)]
         
@@ -264,6 +268,7 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                 for arxiv_id in arxiv_ids
             }
             
+            # Wait for all futures to complete
             completed = 0
             for future in as_completed(future_to_id):
                 arxiv_id = future_to_id[future]
@@ -276,7 +281,7 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                 except Exception as e:
                     print(f"[{completed}/{len(arxiv_ids)}] ✗ {arxiv_id} - Exception: {e}")
         
-        print(f"Finished {start_month}.\n")
+        print(f"Finished {start_month}\n")
     
     else:
         # Phase 1: Download from start_month with sliding window
@@ -287,7 +292,7 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
         completed_count = 0
         should_stop = False
         
-        # Track ID của lần thành công cuối cùng
+        # Track ID of last successful download
         last_success_id = start_id - 1
         
         with ThreadPoolExecutor(max_workers=max_parallels) as executor:
@@ -299,7 +304,7 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                 # Submit new tasks
                 while len(active_futures) < max_parallels and not should_stop:
                     arxiv_id = f"{start_prefix}.{current_id:05d}"
-                    # Không count stats cho các probe downloads
+                    # Do not count stats for probe downloads
                     future = executor.submit(download_single_paper, arxiv_id, save_dir, count_stats=False)
                     active_futures[future] = (arxiv_id, current_id)
                     current_id += 1
@@ -320,23 +325,22 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                             paper_id, success = results_buffer.pop(next_id_to_process)
                             completed_count += 1
                             status = "O" if success else "X"
-                            
-                            # Update counters trước
+
+                            # Update counters before
                             if success:
                                 failed_consecutive = 0
                                 last_success_id = next_id_to_process
                             else:
                                 failed_consecutive += 1
-                            
-                            # Check nếu đạt điều kiện stop
+
+                            # Check if reached stop condition
                             if failed_consecutive >= max_consecutive_failures:
-                                print(f"\nReached {max_consecutive_failures} consecutive failures at ID {next_id_to_process}.")
+                                print(f"\nReached {max_consecutive_failures} consecutive failures at ID {next_id_to_process}")
                                 print(f"  Last successful ID: {last_success_id}")
                                 print(f"  Stopping submission. Discarding all failures after last success...")
                                 should_stop = True
-                            
-                            # Chỉ count nếu paper nằm TRƯỚC hoặc BẰNG last_success_id
-                            # Tất cả papers sau last_success_id đều là probe
+
+                            # Only count if paper is BEFORE or EQUAL to last_success_id
                             if next_id_to_process <= last_success_id or (not should_stop and success):
                                 with download_lock:
                                     if success:
@@ -346,7 +350,6 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
                                 
                                 print(f"[Phase 1: {completed_count}] {status} {paper_id}")
                             else:
-                                # Đây là probe download (sau last_success_id), không count
                                 print(f"[Phase 1: {completed_count}] {status} {paper_id} (probe - discarded)")
                             
                             next_id_to_process += 1
@@ -394,46 +397,48 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
     print(f"  Extract failures         : {stats['failed_extract']}")
     print(f"  PDFs detected            : {stats['pdfs']}")
     print(f"  Other files deleted      : {stats['deleted_files']}")
-    print(f"  Output folder            : {os.path.abspath('./23127238')}")
+    print(f"  Output folder            : {os.path.abspath(save_dir)}")
     print("=" * 100)
     print()
 
 
 if __name__ == "__main__":
     # Configuration
+    
+    # TEST
     START_MONTH = "2023-05"
     START_ID = 9938
     END_MONTH = "2023-05"
     END_ID = 9950
     SAVE_DIR = "./23127238"
-    MAX_PARALLELS = 20
+    MAX_PARALLELS = 10
     
     
-    # # Đạt
+    # # BÁ ĐẠT
     # START_MONTH = "2023-04"
     # START_ID = 14607
     # END_MONTH = "2023-05"
     # END_ID = 4592
     # SAVE_DIR = "./23127238"
-    # MAX_PARALLELS = 20
+    # MAX_PARALLELS = 10
     
     
-    # # Nhân
+    # # THIỆN NHÂN
     # START_MONTH = "2023-05"
     # START_ID = 4593
     # END_MONTH = "2023-05"
     # END_ID = 9594
     # SAVE_DIR = "./23127238"
-    # MAX_PARALLELS = 20
-    
-    
-    # #Việt
+    # MAX_PARALLELS = 10
+
+
+    # # NAM VIỆT
     # START_MONTH = "2023-05"
     # START_ID = 9595
     # END_MONTH = "2023-05"
     # END_ID = 14596
     # SAVE_DIR = "./23127238"
-    # MAX_PARALLELS = 20
+    # MAX_PARALLELS = 10
     
     
     

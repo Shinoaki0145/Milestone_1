@@ -7,6 +7,8 @@ from threading import Lock
 
 # Thread-safe locks and counters
 metadata_lock = Lock()
+
+# Global statistics
 stats = {
     "saved": 0,
     "failed": 0,
@@ -14,12 +16,11 @@ stats = {
 
 def get_metadata_all_versions(arxiv_id, save_dir):
     """
-    Lấy metadata tất cả phiên bản của 1 paper.
-    Ghi vào: {save_dir}/yymm-id/metadata.json
+    Get metadata for all versions of an arXiv paper and save to a JSON file
     """
     client = arxiv.Client()
 
-    # Tách prefix (yymm) và suffix (id)
+    # Split arxiv_id into prefix and suffix
     if '.' not in arxiv_id:
         print(f"X  ERROR: Invalid arxiv_id format {arxiv_id}")
         return False
@@ -48,17 +49,13 @@ def get_metadata_all_versions(arxiv_id, save_dir):
 
     print(f"  Found {latest_version} version(s) for {arxiv_id}. Collecting metadata...")
 
-    # Lấy thông tin từ phiên bản mới nhất
+    # Get metadata from base paper (v1)
     final_title = base_paper.title
     final_authors = [author.name for author in base_paper.authors]
     submission_date = base_paper.published.strftime("%Y-%m-%d") if base_paper.published else None
     categories = base_paper.categories
     abstract = base_paper.summary.replace("\n", " ").strip()
     pdf_url = base_paper.pdf_url
-    
-    
-    # revised_dates = [base_paper.updated.strftime("%Y-%m-%d")] if latest_version > 1 else []
-
     revised_dates = []
 
     if latest_version > 1:
@@ -72,12 +69,11 @@ def get_metadata_all_versions(arxiv_id, save_dir):
             except:
                 revised_dates.append(None)
 
-
     if submission_date is None:
         print(f"X  ERROR: No submission date for {arxiv_id} (even v1)")
         return False
     
-    # Dữ liệu metadata
+    
     metadata = {
         "arxiv_id": arxiv_id,
         "paper_title": final_title,
@@ -93,7 +89,7 @@ def get_metadata_all_versions(arxiv_id, save_dir):
     if base_paper.journal_ref:
         metadata["publication_venue"] = base_paper.journal_ref
 
-    # Ghi file JSON
+    # Save metadata to JSON file
     try:
         with open(metadata_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, indent=4, ensure_ascii=False)
@@ -109,7 +105,7 @@ def get_metadata_all_versions(arxiv_id, save_dir):
 
 
 def save_metadata_single(arxiv_id, save_dir, count_stats=True):
-    """Wrapper để chạy song song"""
+    """Wrapper function for parallel execution"""
     success = get_metadata_all_versions(arxiv_id, save_dir)
     if count_stats:
         with metadata_lock:
@@ -120,10 +116,9 @@ def save_metadata_single(arxiv_id, save_dir, count_stats=True):
     return arxiv_id, success
 
 
-def save_metadata_range_parallel(
-    start_month, start_id, end_month, end_id,
-    save_dir="./23127238", max_parallels=20
-):
+def save_metadata_range_parallel(start_month, start_id, end_month, end_id,
+                                    save_dir="./23127238", max_parallels=10):
+    
     start_year, start_mon = start_month.split('-')
     end_year, end_mon = end_month.split('-')
     start_prefix = start_year[2:] + start_mon
@@ -135,11 +130,9 @@ def save_metadata_range_parallel(
 
     max_consecutive_failures = 3
     print(f"Starting metadata download (parallel: {max_parallels})")
-    print(f"Range: {start_prefix}.{start_id:05d} → {end_prefix}.{end_id:05d}")
-    print(f"Metadata saved to: {save_dir}/<yymm-id>/metadata.json\n")
+    print(f"Range: {start_prefix}.{start_id:05d} => {end_prefix}.{end_id:05d}")
 
     if start_month == end_month:
-        # === CÙNG 1 THÁNG ===
         print(f"Phase: Processing {start_month} ({start_id} => {end_id})...")
         arxiv_ids = [f"{start_prefix}.{i:05d}" for i in range(start_id, end_id + 1)]
 
@@ -159,12 +152,14 @@ def save_metadata_range_parallel(
         print(f"Finished {start_month}.\n")
 
     else:
-        # === NHIỀU THÁNG: Phase 1 (start) + Phase 2 (end) ===
+        # Phase 1: Download from start_month with sliding window
         print(f"Phase 1: Processing {start_month} from ID {start_id} → end of month...")
         current_id = start_id
         failed_consecutive = 0
         completed_count = 0
         should_stop = False
+        
+        # Track ID of last successful download
         last_success_id = start_id - 1
 
         with ThreadPoolExecutor(max_workers=max_parallels) as executor:
@@ -176,6 +171,7 @@ def save_metadata_range_parallel(
                 # Submit new tasks
                 while len(active_futures) < max_parallels and not should_stop:
                     arxiv_id = f"{start_prefix}.{current_id:05d}"
+                    # Do not count stats for probe downloads
                     future = executor.submit(save_metadata_single, arxiv_id, save_dir, count_stats=False)
                     active_futures[future] = (arxiv_id, current_id)
                     current_id += 1
@@ -191,23 +187,26 @@ def save_metadata_range_parallel(
                     except Exception as e:
                         results_buffer[id_num] = (arxiv_id, False)
 
-                    # Process in order
+                    # Process results in order
                     while next_id_to_process in results_buffer:
                         paper_id, success = results_buffer.pop(next_id_to_process)
                         completed_count += 1
                         status = "SUCCESS" if success else "FAILED"
 
+                        # Update counters before
                         if success:
                             failed_consecutive = 0
                             last_success_id = next_id_to_process
                         else:
                             failed_consecutive += 1
 
+                        # Check if reached stop condition
                         if failed_consecutive >= max_consecutive_failures:
                             print(f"\n{max_consecutive_failures} consecutive failures at ID {next_id_to_process}")
                             print(f"  Last success: {start_prefix}.{last_success_id:05d}")
                             should_stop = True
 
+                        # Only count if paper is BEFORE or EQUAL to last_success_id
                         if next_id_to_process <= last_success_id or (not should_stop and success):
                             with metadata_lock:
                                 if success:
@@ -225,8 +224,8 @@ def save_metadata_range_parallel(
 
         print(f"Completed {start_month}.\n")
 
-        # === PHASE 2: END MONTH ===
-        print(f"Phase 2: Processing {end_month} from 00001 → {end_id}...")
+        # Phase 2: Download from end_month
+        print(f"Phase 2: Processing {end_month} from 00001 => {end_id}...")
         phase2_ids = [f"{end_prefix}.{i:05d}" for i in range(1, end_id + 1)]
 
         with ThreadPoolExecutor(max_workers=max_parallels) as executor:
@@ -242,7 +241,7 @@ def save_metadata_range_parallel(
                 except Exception as e:
                     print(f"[Phase 2: {completed}/{len(phase2_ids)}] EXCEPTION {arxiv_id} - {e}")
 
-        print(f"Reached end ID {end_id} in {end_month}.")
+        print(f"Reached end ID {end_id} in {end_month}")
 
 
     
@@ -258,39 +257,41 @@ def save_metadata_range_parallel(
 
 if __name__ == "__main__":
     # Configuration
+    
+    # TEST
     START_MONTH = "2023-05"
     START_ID = 9938
     END_MONTH = "2023-05"
     END_ID = 9950
     SAVE_DIR = "./23127238"
-    MAX_PARALLELS = 20
+    MAX_PARALLELS = 10
     
     
-    # # Đạt
+    # # BÁ ĐẠT
     # START_MONTH = "2023-04"
     # START_ID = 14607
     # END_MONTH = "2023-05"
     # END_ID = 4592
     # SAVE_DIR = "./23127238"
-    # MAX_PARALLELS = 20
-    
-    
-    # # Nhân
+    # MAX_PARALLELS = 10
+
+
+    # # THIỆN NHÂN
     # START_MONTH = "2023-05"
     # START_ID = 4593
     # END_MONTH = "2023-05"
     # END_ID = 9594
     # SAVE_DIR = "./23127238"
-    # MAX_PARALLELS = 20
+    # MAX_PARALLELS = 10
     
     
-    # #Việt
+    # # NAM VIỆT
     # START_MONTH = "2023-05"
     # START_ID = 9595
     # END_MONTH = "2023-05"
     # END_ID = 14596
     # SAVE_DIR = "./23127238"
-    # MAX_PARALLELS = 20
+    # MAX_PARALLELS = 10
 
 
 
