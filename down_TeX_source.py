@@ -284,7 +284,7 @@ def download_arxiv_range_parallel(start_month, start_id, end_month, end_id,
         
         print(f"\n{'='*50}")
         print(f"Download complete!")
-        print(f"Successfully downloaded: {downloaded} papers")
+        print(f"Successfully downloaded: {stats['downloaded']} papers")
         print(f"Files saved to: {os.path.abspath(save_dir)}")
         
 def check_file(dir, start_id, end_id):
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     # start_id=9595
     # end_id=14596
 
-    download_arxiv_range(
+    download_arxiv_range_parallel(
         start_month="2023-05",
         start_id=9595,
         end_month="2023-05", 
